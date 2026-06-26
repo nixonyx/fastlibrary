@@ -5,7 +5,7 @@ const express = require('express')
 const app = express()
 
 //porta do servidor
-const PORT = 300;
+const PORT = 3000;
 
 //rota de caminho do servidor
 app.get('/', (req, res) => {
