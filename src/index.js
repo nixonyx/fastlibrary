@@ -1,8 +1,12 @@
+require('dotenv').config({ path: require('path').resolve(__dirname, '../.env') });
+
 //importar o express 
 const express = require('express')
 
 //criação  do app express
 const app = express()
+
+const db = require('./config/db');
 
 //porta do servidor
 const PORT = 3000;
