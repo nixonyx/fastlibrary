@@ -1,42 +1,65 @@
-// carrega as variáveis do arquivo .env
+// Carrega as variáveis do arquivo .env
 require('dotenv').config({ path: require('path').resolve(__dirname, '../../.env') });
 
-// importação do pool de conexões do banco de dados no arquivo db.js
+// Importa a conexão com o banco de dados
 const db = require('../config/db');
 
-// cria uma função assíncrona para rodar os comandos no banco de dados
 async function inicializarBanco() {
     try {
-        // mensagem no terminal avisando que o processo começou
-        console.log('Criando tabelas no banco de dados...');
+        console.log('Iniciando a configuração das tabelas da FastLibrary...');
 
-        //comando que cria a tabela se ela ainda não existir no MySQL
+        // 1. TABELA DE LIVROS
         const sqlLivros = `
             CREATE TABLE IF NOT EXISTS livros (
-                id INT AUTO_INCREMENT PRIMARY KEY, -- ID único para cada livro
-                titulo VARCHAR(255) NOT NULL,      -- Título do livro 
-                autor VARCHAR(255) NOT NULL,       -- Autor do livro 
-                ano_publicacao INT,                -- Ano que o livro foi lançado 
-                status VARCHAR(50) DEFAULT 'disponível' -- Status padrão do livro ao ser cadastrado
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                titulo VARCHAR(255) NOT NULL,
+                autor VARCHAR(255) NOT NULL,
+                ano_publicacao INT,
+                status VARCHAR(50) DEFAULT 'disponível'
             );
         `;
-
-        // envia o comando SQL acima para o MySQL do XAMPP e aguarda (await) a execução terminar
         await db.query(sqlLivros);
-        
-        // se o comando rodar sem erros, exibe a mensagem de sucesso no terminal
-        console.log('Tabela "livros" criada ou já existente com sucesso! ');
+        console.log('Tabela "livros" configurada!');
 
-        // Encerra o script do Node com código 0 (sucesso absoluto)
-        process.exit(0);
+        // 2. TABELA DE USUÁRIOS (Para separar Estudante de Bibliotecário)
+        const sqlUsuarios = `
+            CREATE TABLE IF NOT EXISTS usuarios (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                nome VARCHAR(255) NOT NULL,
+                email VARCHAR(255) NOT NULL UNIQUE,
+                senha VARCHAR(255) NOT NULL,
+                cargo VARCHAR(50) DEFAULT 'estudante'
+            );
+        `;
+        await db.query(sqlUsuarios);
+        console.log('Tabela "usuarios" configurada! ');
+
+        // 3. TABELA DE EMPRÉSTIMOS (O controle de prazos do Admin)
+        const sqlEmprestimos = `
+            CREATE TABLE IF NOT EXISTS emprestimos (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                id_usuario INT,
+                id_livro INT,
+                data_emprestimo DATETIME DEFAULT CURRENT_TIMESTAMP,
+                data_devolucao DATETIME NOT NULL,
+                status VARCHAR(50) DEFAULT 'ativo',
+                FOREIGN KEY (id_usuario) REFERENCES usuarios(id) ON DELETE CASCADE,
+                FOREIGN KEY (id_livro) REFERENCES livros(id) ON DELETE CASCADE
+            );
+        `;
+        await db.query(sqlEmprestimos);
+        console.log('Tabela "emprestimos" configurada com sucesso!');
+
     } catch (error) {
-        // se acontecer qualquer erro (XAMPP desligado, erro de sintaxe SQL, etc.), cai aqui
-        console.error('Erro ao inicializar o banco de dados: ', error.message);
-        
-        // encerra o script com código 1 (indica que o programa fechou por causa de um erro)
-        process.exit(1);
+        console.error('Erro ao inicializar o banco de dados', error.message);
+        process.exitCode = 1; // Define o código de erro sem derrubar o processo antes da hora
+    } finally {
+        // Fecha o pool de conexões corretamente após tudo rodar (ou falhar)
+        if (db && typeof db.end === 'function') {
+            await db.end();
+            console.log('Conexão com o banco encerrada com segurança.');
+        }
     }
 }
 
-// executa a função para o processo rodar de verdade
 inicializarBanco();
